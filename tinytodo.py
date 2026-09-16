@@ -60,6 +60,20 @@ def cmd_done(args, tasks):
     print(f"Completed: {task['text']}")
 
 
+def cmd_undo(args, tasks):
+    try:
+        task = tasks[args.id - 1]
+    except IndexError:
+        sys.exit(f"No task with id {args.id}")
+    if not task["done"]:
+        print("Not completed yet.")
+        return
+    task["done"] = False
+    task["finished"] = None
+    save(tasks)
+    print(f"Reopened: {task['text']}")
+
+
 def cmd_rm(args, tasks):
     try:
         removed = tasks.pop(args.id - 1)
@@ -86,6 +100,10 @@ def main():
     p_done = sub.add_parser("done", help="Mark a task complete")
     p_done.add_argument("id", type=int)
     p_done.set_defaults(func=cmd_done)
+
+    p_undo = sub.add_parser("undo", help="Reopen a completed task")
+    p_undo.add_argument("id", type=int)
+    p_undo.set_defaults(func=cmd_undo)
 
     p_rm = sub.add_parser("rm", help="Delete a task")
     p_rm.add_argument("id", type=int)

@@ -12,9 +12,19 @@ MARKS = {"h": "!!", "m": "!", "l": ""}
 
 
 def load():
+    tasks = []
     if STORE.exists():
-        return json.loads(STORE.read_text(encoding="utf-8"))
-    return []
+        tasks = json.loads(STORE.read_text(encoding="utf-8"))
+    for i, task in enumerate(tasks, start=1):
+        task.setdefault("id", i)
+    return tasks
+
+
+def find(tasks, id):
+    for task in tasks:
+        if task["id"] == id:
+            return task
+    sys.exit(f"No task with id {id}")
 
 
 def save(tasks):
@@ -22,7 +32,9 @@ def save(tasks):
 
 
 def cmd_add(args, tasks):
+    next_id = max((t.get("id", 0) for t in tasks), default=0) + 1
     tasks.append({
+        "id": next_id,
         "text": args.text,
         "priority": args.priority,
         "done": False,
@@ -30,27 +42,24 @@ def cmd_add(args, tasks):
         "finished": None,
     })
     save(tasks)
-    print(f"Added #{len(tasks)}: {args.text}")
+    print(f"Added #{next_id}: {args.text}")
 
 
 def cmd_list(args, tasks):
     shown = 0
-    for i, task in enumerate(tasks, start=1):
+    for task in tasks:
         if task["done"] and not args.all:
             continue
         flag = "[x]" if task["done"] else "[ ]"
         mark = MARKS.get(task["priority"], "")
-        print(f"  {flag} #{i:<3} {mark:>2} {task['text']}")
+        print(f"  {flag} #{task['id']:<3} {mark:>2} {task['text']}")
         shown += 1
     pending = sum(1 for t in tasks if not t["done"])
     print(f"\n{pending} task(s) pending.")
 
 
 def cmd_done(args, tasks):
-    try:
-        task = tasks[args.id - 1]
-    except IndexError:
-        sys.exit(f"No task with id {args.id}")
+    task = find(tasks, args.id)
     if task["done"]:
         print("Already completed.")
         return
@@ -61,10 +70,7 @@ def cmd_done(args, tasks):
 
 
 def cmd_undo(args, tasks):
-    try:
-        task = tasks[args.id - 1]
-    except IndexError:
-        sys.exit(f"No task with id {args.id}")
+    task = find(tasks, args.id)
     if not task["done"]:
         print("Not completed yet.")
         return
@@ -75,12 +81,10 @@ def cmd_undo(args, tasks):
 
 
 def cmd_rm(args, tasks):
-    try:
-        removed = tasks.pop(args.id - 1)
-    except IndexError:
-        sys.exit(f"No task with id {args.id}")
+    task = find(tasks, args.id)
+    tasks.remove(task)
     save(tasks)
-    print(f"Removed: {removed['text']}")
+    print(f"Removed: {task['text']}")
 
 
 def main():
